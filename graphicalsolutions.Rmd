@@ -1,0 +1,783 @@
+---
+title: "graphical solutions"
+author: "Simin Li"
+date: "September 26, 2016"
+output: html_document
+---
+Case 1 \(OH = r/(1+c_{OH})\), \(\Pi(t_w) = w*t_w\)
+\(a = 12\), \(b = 8\), \(r = 4\), \(T = 24\)
+1. \(cl, tl\) when \(r > 1\)
+
+```{r,echo=FALSE, include=FALSE}
+library(dplyr)
+T = 24
+r = 4
+a = 12
+b = 8
+w = seq(0.1,5,0.01)
+
+
+
+cl_1 <- function(w,T,r,a,b){
+   b*w*(T-r)/(a+b)
+}
+tl_1 <- function(w,T,r,a,b){
+  a*(T-r)/(a+b) * rep(1,length(w))
+}
+
+toh_1 <- function(w,T,r,a,b){
+  r
+}
+
+
+cl_2 <- function(w,T,r,a,b){
+  sln <- vector()
+  for(i in 1:length(w)){
+    ttemp <- a*(T*w[i]-2*sqrt(w[i]*r)+1)/(w[i]*(a+b))
+    if (ttemp< T) rt <- (b*w[i]*T -2*b*sqrt(w[i]*r)+b)/(a+b)
+    else rt <- 0.00001
+    sln <- append(sln,rt)
+  }
+  sln
+}
+
+tl_2 <- function(w,T,r,a,b){
+  sln <- vector()
+  for(i in 1:length(w)){
+    ttemp <- a*(T*w[i]-2*sqrt(w[i]*r)+1)/(w[i]*(a+b))
+    if (ttemp<T) rt <- ttemp
+    else rt <- 0.00001
+    sln <- append(sln,rt)
+  }
+  sln
+}
+
+toh_2 <- function(w,T,r,a,b){
+    sln <- vector()
+  for(i in 1:length(w)){
+    ttemp <- a*(T*w[i]-2*sqrt(w[i]*r)+1)/(w[i]*(a+b))
+    if (ttemp<T)  rt <-  r/sqrt(w[i]*r)
+    else rt <- 0.00001
+    sln <- append(sln,rt)
+  }
+  sln
+}
+
+
+
+w_1 <- w[w<1/r]
+w_2 <- w[w>1/r]
+c_l <- c(cl_1(w_1,T,r,a,b), cl_2(w_2,T,r,a,b))
+t_l <- c(tl_1(w_1,T,r,a,b), tl_2(w_2,T,r,a,b))
+
+
+u <- a*log(c_l) + b*log (t_l)
+
+c1 <- cl_1(w,T,r,a,b)
+t1 <- tl_1(w,T,r,a,b)
+oh1 <- toh_1(w,T,r,a,b)
+c2 <- cl_2(w,T,r,a,b)
+t2 <- tl_2(w,T,r,a,b)
+oh2 <- toh_2(w,T,r,a,b)
+
+s1 <- a*log(c1)+b*log(t1)
+s2 <- a*log(c2)+b*log(t2)
+
+data <-  data.frame(s1=s1,s2=s2)
+data <- data %>% rowwise() %>% mutate(maxu = max(c(s1,s2)),
+                                      maxidx = which.max(c(s1,s2)))
+
+
+sp1 <- a/t1
+sp2 <- a/t2
+spc1 <- b/c1
+spc2 <- b/c2
+
+oh <- data.frame(oh1=oh1,oh2=oh2)
+c_l <- data.frame(c1=c1,c2=c2)
+t_l <- data.frame(t1=t1,t2=t2)
+sp <- data.frame(sp1=sp1,sp2=sp2)
+spc <- data.frame(spc1=spc1,spc2=spc2)
+
+idx <- t(data[,"maxidx"])
+
+cl <- rep(0,length(idx))
+tl <- rep(0,length(idx))
+spm <- rep(0,length(idx))
+ohm <-  rep(0,length(idx))
+spcm <- rep(0,length(idx))
+
+for(i in 1:length(idx)){
+  cl[i] = c_l[i,idx[i]]
+  tl[i] = t_l[i,idx[i]]
+  spm[i] = sp[i,idx[i]]
+  ohm[i] = oh[i,idx[i]]
+  spcm[i] = spc[i,idx[i]]
+}
+
+line1 <- data.frame(
+  wage = w,
+  value = cl)
+line2 <- data.frame(
+  wage = w,
+  value = tl)
+line3 <- data.frame(
+  wage = w,
+  value = data[,"maxu"])
+line4 <- data.frame(
+  wage = w,
+  value = spm)
+
+
+line5 <- data.frame(
+  wage = w,
+  ohp = ohm/T)
+
+line6 <- data.frame(
+  wage = w,
+  leisurep = tl/T)
+
+line7 <- data.frame(
+  wage = w,
+  workp = (T-tl-ohm)/T)
+
+line8 <- data.frame(
+  wage = w,
+  value = spcm)
+
+line9 <- data.frame(
+  wage = w,
+  value = spm/spcm)
+```
+Invest money in houseworks From the beginning. \(cl_1 = \frac{bw(T-r)}{a+b}\), \(tl_1= \frac{a(T-r)}{a+b}\). \(cl_2 = \frac{bwT - 2b\sqrt{wr} +b}{a+b}\), \(tl_2 \frac{awT - 2a \sqrt{wr} +a}{a+b}\).
+
+```{r,echo=FALSE}
+library(ggplot2)
+
+ggplot()+ geom_line(data= line1, aes(x=wage, y=cl, color = "cost in leisure"))+
+  geom_line(data= line2, aes(x=wage, y=tl, color="time in leisure"))+
+  geom_line(data= line3, aes(x=wage, y=maxu, color="utility"))+
+  geom_line(data= line4, aes(x=wage, y=spm, color="shadow price of T"))+
+  labs(y="value")
+
+ggplot()+ geom_line(data= line5, aes(x=wage, y=ohp, color = "% in overhead"))+
+  geom_line(data= line6, aes(x=wage, y=leisurep, color="% in leisure"))+
+  geom_line(data= line7, aes(x=wage, y=workp, color="% at work"))+
+  labs(y="% of T")
+
+#line4 = line4[2:dim(line4)[1],]
+qplot(wage,value,data =line4, geom="line",color=value)+
+  scale_fill_manual(values=c("#31a354"))+labs(y="value")
+
+
+
+```
+
+Another two quantities worth looking at are 1) partial U/partial t_w and 2) MCS of r&T
+
+Case 2 \(\Pi\) (\(t_w\)) = \(w_0 t_w\) if \(t_w\) \(\in\) (0,\(X_1\)); \(w_0X_1 + w_1(t_w-X_1)\) if \(t_w\) \(\in \) \(X_1, X_2\). 12 solutionsfor each set of \((w_0,w_1)\).
+
+```{r}
+
+w0 <- 1
+w1 <- seq(1.5,8,0.1)
+
+X0 <- 0
+X1 <- 8
+X2 <- 10 #implicitly assumed that T-X2-r>0
+
+Pi_w0_1 <- w0*X1 
+Pi_w1_1 <- w0*X1 + w1*(X2-X1)
+
+Pi_w0_2 <- w0
+Pi_w1_2 <- w0*X1
+```
+
+```{r,echo=FALSE,include=FALSE}
+# On piece 1
+# name convention quantitysettingno_pieceno_solutionno
+
+# S1 and S2 are corner solutions 
+# 2 solutions for each corner, i.e. 4 solutions for each segment
+tl2_1 <- function (T,r,a,b,X,Pi_1,w){
+  sln <- vector()
+  for (i in 1: length(w)){
+    if(b*(T-X - r) > a*r*Pi_1[i] + b*r)  rt <- (T-X-r)
+    else rt <- 0.001      
+    sln <- append(sln,rt)
+  }
+ 
+ sln
+}
+
+cl2_1 <- function (T,r,a,b,X,Pi_1,w){
+  sln <- vector()
+  for (i in 1: length(w)){
+    if(b*(T-X - r)*w > a*r*Pi_1[i] + b*r) rt <- Pi_1[i]
+    else rt <- 0.001
+    sln = append(sln,rt)
+  }
+  sln
+}
+
+oh2_1 <- function (T,r,a,b,X,Pi_1,w){
+  sln <- vector()
+  for (i in 1: length(w)){
+    if(b*(T-X - r)*w > a*r*Pi_1[i] + b*r) rt <- r
+    else rt <- 0.001
+    sln = append(sln,rt)
+  }
+  sln
+}
+
+tl2_2 <- function (T,r,a,b,X,Pi_1,w){
+  sln <- vector()
+  for(i in 1:length(w)){
+    R <- (T-X)*(1+Pi_1[i])
+    delta <- r^2*(a-b)^2 + 4*a*b*r*(T-X)*(1+Pi_1[i])
+    temp <- (-2*a*R +(a-b)*r + sqrt(delta))/(-2*a*(1+Pi_1[i])) 
+    if(r<R & b*(T-X)<r*(a*Pi_1[i]+b) & 2*a*R>(a-b)*r && temp <= T) 
+      rt <- temp 
+    else rt <- 0.001
+    sln = append(sln,rt)
+  }
+  sln
+}
+
+cl2_2 <- function (T,r,a,b,X,Pi_1,w){
+  sln = vector()
+  for(i in 1:length(w)){
+    R <- (T-X)*(1+Pi_1[i])
+    delta <- r^2*(a-b)^2 + 4*a*b*r*(T-X)*(1+Pi_1[i])
+    temp <- (-2*a*R +(a-b)*r + sqrt(delta))/(-2*a*(1+Pi_1[i]))
+    if(r<R && b*(T-X)<r*(a*Pi_1[i]+b) && 2*a*R>(a-b)*r && temp < T) 
+      rt <- ((1+Pi_1[i])*(sqrt(delta) - (a+b)*r))/(sqrt(delta) +(a-b)*r) 
+    else rt <- 0.001     
+    sln = append(sln,rt)
+  }
+  sln
+}
+
+oh2_2 <- function (T,r,a,b,X,Pi_1,w){
+  sln = vector()
+  for(i in 1:length(w)){
+    R <- (T-X)*(1+Pi_1[i])
+    delta <- r^2*(a-b)^2 + 4*a*b*r*(T-X)*(1+Pi_1[i])
+    temp <- (-2*a*R +(a-b)*r + sqrt(delta))/(-2*a*(1+Pi_1[i]))
+    if(r<R && b*(T-X)<r*(a*Pi_1[i]+b) && 2*a*R>(a-b)*r && temp < T) 
+      rt <- r/(1+Pi_1 - ((1+Pi_1[i])*(sqrt(delta) - (a+b)*r))/(sqrt(delta) +(a-b)*r))
+    else rt <- 0.001     
+    sln = append(sln,rt)
+  }
+  sln
+}
+
+
+# solution 3 and 4 are interior solutions 
+# again two interior solutions for each segment
+I0 = 0
+I1 = (w0-w1)*X1
+
+cl2_3 <- function (T,r,a,b,X1,X2,I,w){
+  sln = vector()
+  for(i in 1:length(w)){
+    t = (a*w[i]*T - 2*a*sqrt(w[i]*r) +a + a*I[i])/(w[i]*(a+b))
+    c = (b*w[i]*T - 2*b*sqrt(w[i]*r) +b + b*I[i])/(a+b)
+    if((sqrt(w[i]*r) -1 +c - I[i])/w[i]>X1 && (sqrt(w[i]*r) -1 +c - I[i])/w[i]<X2 && w[i]*r>=1 && t < T)  rt <- c
+    else rt <- 0.001  
+    sln = append(sln,rt)
+  }
+  sln
+}
+
+tl2_3 <- function (T,r,a,b,X1,X2,I,w){
+  sln = vector()
+  for (i in 1:length(w)){
+    t = (a*w[i]*T - 2*a*sqrt(w[i]*r) +a + a*I[i])/(w[i]*(a+b))
+    c = (b*w[i]*T - 2*b*sqrt(w[i]*r) +b + b*I[i])/(a+b)
+    if( (sqrt(w[i]*r) -1 +c - I[i])/w[i]>X1 && (sqrt(w[i]*r) -1 +c - I[i])/w[i]<=X2 && w[i]*r>=1 && t < T)  rt <- t
+    else rt <- 0.001
+    sln = append(sln,rt)
+  }
+  sln
+}
+
+oh2_3 <- function (T,r,a,b,X1,X2,I,w){
+  sln = vector()
+  for(i in 1:length(w)){
+    t = (a*w[i]*T - 2*a*sqrt(w[i]*r) +a + a*I[i])/(w[i]*(a+b))
+    c = (b*w[i]*T - 2*b*sqrt(w[i]*r) +b + b*I[i])/(a+b)
+    if((sqrt(w[i]*r) -1 +c - I[i])/w[i]>X1 && (sqrt(w[i]*r) -1 +c - I[i])/w[i]<X2 && w[i]*r>=1 && t < T)  rt <- r/sqrt(w[i]*r)
+    else rt <- 0.001  
+    sln = append(sln,rt)
+  }
+  sln
+}
+
+
+cl2_4 <- function (T,r,a,b,X1,X2,I,w){
+  sln <- vector()
+  for (i in 1: length(w)){
+    t <- b*(T+I[i]-r)/(a+b)
+    if( (b*T - a*I[i] - b*r)/(a+b)*w[i] >X1 && (b*T - a*I[i] - b*r)/(a+b)*w[i] <X2 && w[i]<=1 && t < T) 
+      rt <- a*(T+I[i]-r)/((a+b)*w[i])
+    else rt <- 0.001
+    
+    sln = append(sln,rt)    
+  }
+  sln
+}
+
+tl2_4 <- function (T,r,a,b,X1,X2,I,w){
+  sln <- vector()
+  for (i in 1: length(w)){  
+    t <- b*(T+I[i]-r)/(a+b)
+    if( (b*T - a*I[i] - b*r)/(a+b)*w[i] >X1 && (b*T - a*I[i] - b*r)/(a+b)*w[i] <X2 && w[i]<=1 && t<T) 
+      rt <- b*(T+I[i]-r)/(a+b)
+    else rt <- 0.001
+    sln = append(sln,rt)      
+  }
+  sln
+}
+
+
+oh2_4 <- function (T,r,a,b,X1,X2,I,w){
+  sln <- vector()
+  for (i in 1: length(w)){  
+    t <- b*(T+I[i]-r)/(a+b)
+    if( (b*T - a*I[i] - b*r)/(a+b)*w[i] >X1 && (b*T - a*I[i] - b*r)/(a+b)*w[i] <X2 && w[i]<=1 && t<T) 
+      rt <- r
+    else rt <- 0.001
+    sln = append(sln,rt)      
+  }
+  sln
+}
+
+
+```
+
+```{r,echo=FALSE,include=FALSE}
+S1 <- a* log(tl2_1(T,r,a,b,X1,Pi_w0_1,w0)) + 
+  b* log(cl2_1(T,r,a,b,X1,Pi_w0_1,w0))  
+t1 <- cl2_1(T,r,a,b,X1,Pi_w0_1,w0)
+c1 <- tl2_1(T,r,a,b,X1,Pi_w0_1,w0)
+oh1 <- oh2_1(T,r,a,b,X1,Pi_w0_1,w0)
+
+S2 <- a* log(tl2_2(T,r,a,b,X1,Pi_w0_1,w0)) +
+  b* log(cl2_2(T,r,a,b,X1,Pi_w0_1,w0))
+c2 <- cl2_2(T,r,a,b,X1,Pi_w0_1,w0)
+t2 <- tl2_2(T,r,a,b,X1,Pi_w0_1,w0)
+oh2 <- oh2_2(T,r,a,b,X1,Pi_w0_1,w0)
+
+S3 <- a* log(tl2_1(T,r,a,b,X0,Pi_w0_2,w0)) + 
+  b* log(cl2_1(T,r,a,b,X0,Pi_w0_2,w0)) 
+c3 <- cl2_1(T,r,a,b,X0,Pi_w0_2,w0)
+t3 <- tl2_1(T,r,a,b,X0,Pi_w0_2,w0)
+oh3 <- oh2_1(T,r,a,b,X0,Pi_w0_2,w0)
+
+S4 <- a* log(tl2_2(T,r,a,b,X0,Pi_w0_2,w0)) + 
+  b* log(cl2_2(T,r,a,b,X0,Pi_w0_2,w0)) 
+c4 <- cl2_2(T,r,a,b,X0,Pi_w0_2,w0)
+t4 <- tl2_2(T,r,a,b,X0,Pi_w0_2,w0)
+oh4 <- oh2_2(T,r,a,b,X0,Pi_w0_2,w0)
+
+S5 <- a* log(tl2_3(T,r,a,b,X0,X1,I0,w0)) + 
+  b* log(cl2_3(T,r,a,b,X0,X1,I0,w0)) 
+c5 <- cl2_3(T,r,a,b,X0,X1,I0,w0)
+t5 <- tl2_3(T,r,a,b,X0,X1,I0,w0)
+oh5 <- oh2_3(T,r,a,b,X0,X1,I0,w0)
+
+S6 <- a* log(tl2_4(T,r,a,b,X0,X1,I0,w0)) + 
+  b* log(cl2_4(T,r,a,b,X0,X1,I0,w0)) 
+c6 <- cl2_4(T,r,a,b,X0,X1,I0,w0)
+t6 <- tl2_4(T,r,a,b,X0,X1,I0,w0)
+oh6 <- oh2_4(T,r,a,b,X0,X1,I0,w0)
+
+# on piece 2
+S7 <- a* log(tl2_1(T,r,a,b,X2,Pi_w1_1,w1)) + 
+  b* log(cl2_1(T,r,a,b,X2,Pi_w1_1,w1))
+c7 <- cl2_1(T,r,a,b,X2,Pi_w1_1,w1)
+t7 <- tl2_1(T,r,a,b,X2,Pi_w1_1,w1)
+oh7 <- oh2_1(T,r,a,b,X2,Pi_w1_1,w1)
+  
+S8 <- a* log(tl2_2(T,r,a,b,X2,Pi_w1_1,w1)) +
+  b* log(cl2_2(T,r,a,b,X2,Pi_w1_1,w1))
+c8 <- cl2_2(T,r,a,b,X2,Pi_w1_1,w1)
+t8 <- tl2_2(T,r,a,b,X2,Pi_w1_1,w1)
+oh8 <- oh2_2(T,r,a,b,X2,Pi_w1_1,w1)
+    
+S9 <- a* log(tl2_1(T,r,a,b,X2,Pi_w1_2,w0)) + 
+  b* log(cl2_1(T,r,a,b,X2,Pi_w1_2,w0)) 
+c9 <- cl2_1(T,r,a,b,X2,Pi_w1_2,w0)
+t9 <- tl2_1(T,r,a,b,X2,Pi_w1_2,w0)
+oh9 <- oh2_1(T,r,a,b,X2,Pi_w1_2,w0)
+  
+  
+S10 <- a* log(tl2_2(T,r,a,b,X2,Pi_w1_2,w0)) + 
+  b* log(cl2_2(T,r,a,b,X2,Pi_w1_2,w0)) 
+c10 <- cl2_2(T,r,a,b,X2,Pi_w1_2,w0)
+t10 <- tl2_2(T,r,a,b,X2,Pi_w1_2,w0)
+oh10 <- oh2_2(T,r,a,b,X2,Pi_w1_2,w0)
+  
+S11 <- a* log(tl2_3(T,r,a,b,X1,X2,I1,w1)) + 
+  b* log(cl2_3(T,r,a,b,X1,X2,I1,w1)) 
+c11 <- cl2_3(T,r,a,b,X1,X2,I1,w1)
+t11 <- tl2_3(T,r,a,b,X1,X2,I1,w1)
+oh11 <- oh2_3(T,r,a,b,X1,X2,I1,w1)
+  
+S12 <- a* log(tl2_4(T,r,a,b,X1,X2,I1,w1)) + 
+  b* log(cl2_4(T,r,a,b,X1,X2,I1,w1)) 
+c12 <- cl2_4(T,r,a,b,X1,X2,I1,w1)
+t12 <- tl2_4(T,r,a,b,X1,X2,I1,w1)
+oh12 <- oh2_4(T,r,a,b,X1,X2,I1,w1)
+  
+
+
+
+sp1 = a/t1
+sp2 = a/t2
+sp3 = a/t3
+sp4 = a/t4
+sp5 = a/t5
+sp6 = a/t6
+sp7 = a/t7
+sp8 = a/t8
+sp9 = a/t9
+sp10 = a/t10
+sp11 = a/t11
+sp12 = a/t12
+
+slnmat <- data.frame (S1=S1*rep(1,length(w1)),
+                      S2 = S2*rep(1,length(w1)),
+                      S3 = S3*rep(1,length(w1)),
+                      S4 = S4*rep(1,length(w1)),
+                      S5 = S5*rep(1,length(w1)),
+                      S6 = S6*rep(1,length(w1)),
+                      S7 = S7,
+                      S8 = S8,
+                      S9 = S9,
+                      S10 = S10,
+                      S11 = S11,
+                      S12 = S12)
+
+
+cmat <- data.frame (  c1 = c1*rep(1,length(w1)),
+                      c2 = c2*rep(1,length(w1)),
+                      c3 = c3*rep(1,length(w1)),
+                      c4 = c4*rep(1,length(w1)),
+                      c5 = c5*rep(1,length(w1)),
+                      c6 = c6*rep(1,length(w1)),
+                      c7 = c7,
+                      c8 = c8,
+                      c9 = c9,
+                      c10 = c10,
+                      c11 = c11,
+                      c12 = c12 )
+
+tmat <- data.frame (  t1 = t1*rep(1,length(w1)),
+                      t2 = t2*rep(1,length(w1)),
+                      t3 = t3*rep(1,length(w1)),
+                      t4 = t4*rep(1,length(w1)),
+                      t5 = t5*rep(1,length(w1)),
+                      t6 = t6*rep(1,length(w1)),
+                      t7 = t7,
+                      t8 = t8,
+                      t9 = t9,
+                      t10 = t10,
+                      t11 = t11,
+                      t12 = t12 )
+
+spmat <- data.frame ( sp1 = sp1*rep(1,length(w1)),
+                      sp2 = sp2*rep(1,length(w1)),
+                      sp3 = sp3*rep(1,length(w1)),
+                      sp4 = sp4*rep(1,length(w1)),
+                      sp5 = sp5*rep(1,length(w1)),
+                      sp6 = sp6*rep(1,length(w1)),
+                      sp7 = sp7,
+                      sp8 = sp8,
+                      sp9 = sp9,
+                      sp10 =sp10,
+                      sp11 =sp11,
+                      sp12 =sp12 )
+
+ ohmat <- data.frame (oh1 = oh1*rep(1,length(w1)),
+                      oh2 = oh2*rep(1,length(w1)),
+                      oh3 = oh3*rep(1,length(w1)),
+                      oh4 = oh4*rep(1,length(w1)),
+                      oh5 = oh5*rep(1,length(w1)),
+                      oh6 = oh6*rep(1,length(w1)),
+                      oh7 = oh7,
+                      oh8 = oh8,
+                      oh9 = oh9,
+                      oh10 =oh10,
+                      oh11 =oh11,
+                      oh12 =oh12 )      
+
+
+library(dplyr)
+slnmat = slnmat %>% rowwise() %>% mutate(maxidx = which.max(c(S1,S2,S3,S4,S5,S6,S7,S8,S9,S10,S11,S12)),
+                                         maxutil = max(S1,S2,S3,S4,S5,S6,S7,S8,S9,S10,S11,S12))
+
+u2 = slnmat[,"maxutil"]
+
+idx = t(slnmat[,"maxidx"])
+optc = rep(0,length(idx))
+for(i in 1:length(idx)){
+  optc[i] = cmat[i,idx[i]]
+  
+}
+optt = rep(0,length(idx))
+for(i in 1:length(idx)){
+  optt[i] = tmat[i,idx[i]]
+  
+}
+
+optsp = rep(0,length(idx))
+for(i in 1:length(idx)){
+  optsp[i] = spmat[i,idx[i]]
+  
+}
+
+optoh = rep(0,length(idx))
+for(i in 1:length(idx)){
+  optoh[i] = ohmat[i,idx[i]]
+  
+}
+
+line1 <- data.frame(
+  wage = w1,
+  value = optc)
+line2 <- data.frame(
+  wage = w1,
+  value = optt)
+line3 <- data.frame(
+  wage = w1,
+  value = u2)
+line4 <- data.frame(
+  wage = w1,
+  value = optsp)
+
+line5 <- data.frame(
+  wage = w1,
+  ohp = optoh/T)
+
+line6 <- data.frame(
+  wage = w1,
+  leisurep = optt/T)
+
+line7 <- data.frame(
+  wage = w1,
+  workp = (T-optt-optoh)/T)
+
+
+
+
+```
+
+```{r,echo=FALSE}
+library(ggplot2)
+ggplot()+ geom_line(data= line1, aes(x=wage, y=optc, color = "cost in leisure"))+
+  geom_line(data= line2, aes(x=wage, y=optt, color="time in leisure"))+
+  geom_line(data= line3, aes(x=wage, y=u2, color="utility"))+
+  geom_line(data= line4, aes(x=wage, y=optsp, color="shadow price of T"))+
+  labs(y="value")
+
+ggplot()+ geom_line(data= line5, aes(x=wage, y=ohp, color = "% in overhead"))+
+  geom_line(data= line6, aes(x=wage, y=leisurep, color="% in leisure"))+
+  geom_line(data= line7, aes(x=wage, y=workp, color="% at work"))+
+  labs(y="% of T")
+
+line4 = line4[2:dim(line4)[1],]
+qplot(wage,value,data =line4, geom="line",color=value)+
+  scale_fill_manual(values=c("#31a354"))+labs(y="value")
+
+```
+
+Case 3: \(\Pi(t_w) = w*t_w\), \(OH = -k_1 c_{OH} + k_2\)
+
+```{r,echo=FALSE}
+k1 = 2
+k2 = 4
+w = seq(0.01,4,0.01)
+
+cl3_1 <- function(w,T,k1,k2,a,b){
+  sln <- vector()
+  for(i in 1:length(w)){
+    if (w[i]<=1/k1) rt <- b*w[i]*(T-k2)/(a+b)
+    else rt <- 0.00001
+    sln <- append(sln,rt)
+  }
+  sln
+}
+tl3_1 <- function(w,T,k1,k2,a,b){
+  sln <- vector()
+  for(i in 1:length(w)){
+    if (w[i]<=1/k1) rt <- a*(T-k2)/(a+b)
+    else rt <- 0.00001
+    sln <- append(sln,rt)
+  }
+  sln
+}
+
+oh3_1 <- function(w,T,k1,k2,a,b){
+  sln <- vector()
+  for(i in 1:length(w)){
+    if (w[i]<=1/k1) rt <- r
+    else rt <- 0.00001
+    sln <- append(sln,rt)
+  }
+  sln
+}
+
+
+
+cl3_2 <- function(w,T,k1,k2,a,b){
+  sln <- vector()
+  for(i in 1:length(w)){
+    if (w[i]>=1/k1) rt <- (b*w[i]*T -b*k2/k1)/(a+b)
+    else rt <- 0.00001
+    sln <- append(sln,rt)
+  }
+  sln
+}
+
+tl3_2 <- function(w,T,k1,k2,a,b){
+  sln <- vector()
+  for(i in 1:length(w)){
+    if (w[i]>=1/k1 ) rt <- (a*w[i]*T - a*k2/k1)/((a+b)*w[i]) 
+    else rt <- 0.00001
+    sln <- append(sln,rt)
+  }
+  sln
+}
+
+
+oh3_2 <- function(w,T,k1,k2,a,b){
+  sln <- vector()
+  for(i in 1:length(w)){
+    if (w[i]>=1/k1 ) rt <- r/(1+k2/k1)
+    else rt <- 0.00001
+    sln <- append(sln,rt)
+  }
+  sln
+}
+
+# cl3_3 <- function(w,T,k1,k2,a,b){
+#   sln <- vector()
+#   for(i in 1:length(w)){
+#     t = T- b*(T-k2)/(a+b)-k2
+#     if (w[i]=1/k1 && t<T) rt <- b*(T-k2)/k1*(a+b)
+#     else rt <- 0.00001
+#     sln <- append(sln,rt)
+#   }
+#   sln
+# }
+# 
+# tl3_3 <- function(w,T,k1,k2,a,b){
+#   sln <- vector()
+#   for(i in 1:length(w)){
+#     t = T- b*(T-k2)/(a+b)-k2
+#     if (w[i] =1/k && t<T ) rt <- t
+#     else rt <- 0.00001
+#     sln <- append(sln,rt)
+#   }
+#   sln
+# }
+# 
+
+
+
+
+S1 <- a* log(tl3_1(w,T,k1,k2,a,b)) + 
+  b* log(cl3_1(w,T,k1,k2,a,b))  
+t1 <- tl3_1(w,T,k1,k2,a,b)
+c1 <- cl3_1(w,T,k1,k2,a,b)
+oh1 <- oh3_1(w,T,k1,k2,a,b)
+sp1 <- a/t1
+
+S2 <- a* log(tl3_2(w,T,k1,k2,a,b)) + 
+  b* log(cl3_2(w,T,k1,k2,a,b))  
+t2 <- tl3_2(w,T,k1,k2,a,b)
+c2 <- cl3_2(w,T,k1,k2,a,b)
+oh2 <- oh3_2(w,T,k1,k2,a,b)
+sp2 <- a/t2
+
+data <-  data.frame(S1=S1,S2=S2)
+data <- data %>% rowwise() %>% mutate(maxu = max(c(S1,S2)),
+                                      maxidx = which.max(c(S1,S2)))
+
+
+
+c_l = data.frame(c1=c1,c2=c2)
+t_l = data.frame(t1=t1,t2=t2)
+sp = data.frame(sp1=sp1,sp2=sp2)
+ohm = data.frame(oh1=oh1,oh2=oh2)
+
+idx = t(data[,"maxidx"])
+
+cl = rep(0,length(idx))
+tl = rep(0,length(idx))
+spm = rep(0,length(idx))
+oht = rep(0,length(idx))
+for(i in 1:length(idx)){
+  cl[i] = c_l[i,idx[i]]
+  tl[i] = t_l[i,idx[i]]
+  spm[i] = sp[i,idx[i]]
+  oht[i] = ohm[i,idx[i]]
+  
+}
+
+line1 <- data.frame(
+  wage = w,
+  value = cl)
+line2 <- data.frame(
+  wage = w,
+  value = tl)
+line3 <- data.frame(
+  wage = w,
+  value = data[,"maxu"])
+line4 <- data.frame(
+  wage = w,
+  value = spm)
+
+
+line5 <- data.frame(
+  wage = w,
+  ohp = oht/T)
+
+line6 <- data.frame(
+  wage = w,
+  leisurep = tl/T)
+
+line7 <- data.frame(
+  wage = w,
+  workp = (T-tl-oht)/T)
+
+
+
+
+```
+
+```{r,echo=FALSE}
+ggplot()+ geom_line(data= line1, aes(x=wage, y=cl, color = "cost in leisure"))+
+  geom_line(data= line2, aes(x=wage, y=tl, color="time in leisure"))+
+  geom_line(data= line3, aes(x=wage, y=maxu, color="utility"))+
+  geom_line(data= line4, aes(x=wage, y=spm, color="shadow price of T"))+
+#   geom_vline(xintercept = w[200], colour="gray", linetype = "longdash")+
+#   annotate("text", label = "c_OH = 0", x = 1, y = 30, size = 5, colour = "#FF5E33")+
+  labs(y="value")
+
+ggplot()+ geom_line(data= line5, aes(x=wage, y=ohp, color = "% in overhead"))+
+  geom_line(data= line6, aes(x=wage, y=leisurep, color="% in leisure"))+
+  geom_line(data= line7, aes(x=wage, y=workp, color="% at work"))+
+  labs(y="% of T")
+
+
+
+line4 = line4[2:dim(line4)[1],]
+qplot(wage,value,data =line4, geom="line",color=value)+
+  scale_fill_manual(values=c("#31a354"))+labs(y="value")
+
+
+```
+
